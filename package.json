@@ -1,0 +1,13 @@
+{
+  "name": "claudify",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A deterministic, browser-native AI-prose parody transformer.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/domain/hash.js && node --check src/domain/rules.js && node --check src/domain/document.js && node --check src/domain/engine.js && node --check src/domain/index.js && node --check src/browser/url.js && node --check src/browser/clipboard.js && node --check src/browser/render.js && node --check src/presentation/state.js && node --check src/app.js",
+    "oracle": "node test/oracle.js",
+    "serve": "python3 -m http.server 8000"
+  }
+}
