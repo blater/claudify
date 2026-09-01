@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { copyOutput } from '../src/browser/clipboard.js';
 import { renderRich } from '../src/browser/render.js';
-import { phraseRules } from '../src/domain/rules.js';
 import { score, serializeMarkdown, serializePlain, tally, toRichTree, transform } from '../src/domain/index.js';
 import { fetchSource, githubApiUrl, sourceLoadFailure } from '../src/browser/url.js';
 
@@ -50,14 +49,61 @@ test('required lexical replacements are present', () => {
 });
 
 test('every supplied archaic phrase maps once through the lexical ledger', () => {
-  const archaicRules = phraseRules.filter((rule) => rule.id.startsWith('lex-archaic-'));
-  const source = archaicRules.map(({ triggers }) => `${triggers[0]}.`).join(' ');
+  const expected = {
+    '’Tis': 'It is',
+    '’Tis nobler in the mind': 'It’s more strategically admirable',
+    'To suffer': 'To endure / absorb the downside',
+    'The slings and arrows': 'The attacks and setbacks',
+    'Outrageous fortune': 'Extreme bad luck / a hostile external environment',
+    'To take arms': 'To take action / mobilize',
+    'A sea of troubles': 'An overwhelming volume of problems',
+    'By opposing end them': 'By actively pushing back, eliminate them',
+    'To die—to sleep': 'To die is essentially to shut down',
+    'No more': 'No further pain or disruption',
+    'By a sleep': 'Through death / permanent shutdown',
+    'The heartache': 'Emotional pain',
+    'The thousand natural shocks': 'The countless unavoidable difficulties',
+    'That flesh is heir to': 'That human beings inevitably experience',
+    'A consummation': 'A final resolution / complete wrap-up',
+    'Devoutly to be wished': 'Strongly desirable',
+    'Perchance': 'Perhaps / potentially',
+    'Ay': 'Yes / indeed',
+    'There’s the rub': 'That’s the key issue',
+    'The sleep of death': 'The unknown state after death',
+    'What dreams may come': 'Whatever may happen afterward',
+    'Shuffled off': 'Discarded / exited',
+    'This mortal coil': 'This difficult human existence',
+    'Must give us pause': 'Should make us stop and reconsider',
+    'There’s the respect': 'That’s the factor we have to account for',
+    'Makes calamity of so long life': 'Turns life’s problems into a reason to keep enduring them',
+    'Who would bear': 'Who would willingly tolerate',
+    'The whips and scorns of time': 'The constant criticism, pressure, and setbacks of life',
+    'Th’ oppressor’s wrong': 'The abuse inflicted by powerful people',
+    'The proud man’s contumely': 'The arrogance and insults of entitled people',
+    'The pangs of despised love': 'The pain of rejected or unreturned love',
+    'The law’s delay': 'Slow, inefficient legal processes',
+    'The insolence of office': 'The arrogance and abuse of people in positions of authority',
+    'The spurns': 'The rejections and humiliations',
+    'Patient merit': 'Quietly earned success / deserving people’s hard work',
+    'Th’ unworthy': 'People who are less deserving',
+    'His quietus make': 'End his account / shut down his existence',
+    'A bare bodkin': 'A simple dagger / one decisive action',
+    'Fardels': 'Burdens / difficult responsibilities',
+    'To grunt and sweat': 'To struggle and work painfully hard',
+    'Under a weary life': 'Through an exhausting existence',
+    'The dread': 'The fear',
+    'Something after death': 'The possibility of what comes next',
+    'The undiscovered country': 'An unknown future destination',
+    'From whose bourn': 'From whose boundary or territory',
+    'No traveller returns': 'No one comes back with verified information'
+  };
+  const source = Object.keys(expected).map((phrase) => `${phrase}.`).join(' ');
   const document = transform(source);
   const plain = serializePlain(document);
-  for (const rule of archaicRules) {
-    assert.ok(plain.includes(rule.variants[0]), `missing translation for ${rule.id}`);
-    assert.equal(document.ledger.filter((entry) => entry.ruleId === rule.id).length, 1, `wrong ledger count for ${rule.id}`);
+  for (const [phrase, translation] of Object.entries(expected)) {
+    assert.ok(plain.includes(translation), `missing translation for ${phrase}`);
   }
+  assert.equal(document.ledger.filter((entry) => entry.ruleId.startsWith('lex-archaic-')).length, Object.keys(expected).length);
 });
 
 test('archaic matching is longest-first, punctuation-safe, styled, and deterministic', () => {
@@ -75,6 +121,25 @@ test('archaic matching is longest-first, punctuation-safe, styled, and determini
 test('archaic-heavy input remains within the existing growth ceiling', () => {
   const source = Array(12).fill('The slings and arrows bring a sea of troubles.').join(' ');
   assert.ok(wordCount(serializePlain(transform(source))) <= Math.floor(wordCount(source) * 2.25));
+});
+
+test('curated literary vocabulary receives corporate translations without generic duplicates', () => {
+  const source = 'The team reviews the situation carefully while preserving context and documenting the plan for reviewers. Plague. Dowry. Calumny. Conscience. Resolution. Enterprises. Moment. Origin. Commencement. Grief. Cancel.';
+  const output = serializePlain(transform(source));
+  for (const translation of [
+    'Systemic downside vector',
+    'Marriage-related asset package',
+    'Damaging public criticism',
+    'Self-awareness / internal ethical review',
+    'Determination / willingness to act',
+    'Major initiatives / projects',
+    'Significance / impact',
+    'Root cause',
+    'Beginning / initial trigger',
+    'Emotional distress',
+    'Erase / invalidate'
+  ]) assert.match(output, new RegExp(translation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  assert.doesNotMatch(output, /\bFair\b|\bWill\b|\bMight\b/);
 });
 
 test('protected payload instances round-trip byte-identically in both serializers', () => {
