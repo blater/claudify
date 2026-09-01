@@ -31,6 +31,28 @@ test('accepted protected forms round-trip exactly without marker or bold collisi
   }
 });
 
+test('archaic phrases stay byte-identical in protected spans and never match substrings', () => {
+  const source = [
+    '`Perchance`',
+    'https://example.com/Perchance',
+    '[Perchance](https://example.com/Perchance)',
+    '"Perchance"',
+    '**Perchance**',
+    'ACME PERCHANCE LABS',
+    '42',
+    'perchanceful day'
+  ].join('\n\n');
+  const document = transform(source);
+  for (const output of [serializePlain(document), serializeMarkdown(document)]) {
+    for (const payload of ['`Perchance`', 'https://example.com/Perchance', '[Perchance](https://example.com/Perchance)', '"Perchance"', '**Perchance**', 'ACME PERCHANCE LABS', '42']) {
+      assert.ok(output.includes(payload), `missing protected payload: ${payload}`);
+    }
+    assert.doesNotMatch(output, /\*\*Perhaps \/ potentially\*\*/);
+    assert.match(output, /perchanceful day/);
+  }
+  assert.equal(document.ledger.filter((entry) => entry.ruleId === 'lex-archaic-perchance').length, 0);
+});
+
 test('auxiliary possession and ambiguous colon prose pass through conservative recognizers', () => {
   const auxiliary = serializePlain(transform('She has not finished the review. They had already completed the task.'));
   assert.match(auxiliary, /has not finished/);

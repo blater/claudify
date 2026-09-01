@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { copyOutput } from '../src/browser/clipboard.js';
 import { renderRich } from '../src/browser/render.js';
+import { phraseRules } from '../src/domain/rules.js';
 import { score, serializeMarkdown, serializePlain, tally, toRichTree, transform } from '../src/domain/index.js';
 import { fetchSource, githubApiUrl, sourceLoadFailure } from '../src/browser/url.js';
 
@@ -46,6 +47,34 @@ test('required lexical replacements are present', () => {
   const output = serializePlain(transform('The error blocks the task.'));
   assert.match(output, /meaningful correctness gap/i);
   assert.match(output, /disjoint implementation slice/i);
+});
+
+test('every supplied archaic phrase maps once through the lexical ledger', () => {
+  const archaicRules = phraseRules.filter((rule) => rule.id.startsWith('lex-archaic-'));
+  const source = archaicRules.map(({ triggers }) => `${triggers[0]}.`).join(' ');
+  const document = transform(source);
+  const plain = serializePlain(document);
+  for (const rule of archaicRules) {
+    assert.ok(plain.includes(rule.variants[0]), `missing translation for ${rule.id}`);
+    assert.equal(document.ledger.filter((entry) => entry.ruleId === rule.id).length, 1, `wrong ledger count for ${rule.id}`);
+  }
+});
+
+test('archaic matching is longest-first, punctuation-safe, styled, and deterministic', () => {
+  const source = '’Tis nobler in the mind, and ’Tis. Perchance!';
+  const first = transform(source);
+  const second = transform(source);
+  assert.equal(serializeMarkdown(first), serializeMarkdown(second));
+  assert.match(serializeMarkdown(first), /\*\*It’s more strategically admirable\*\*, and \*\*It is\*\*\. \*\*Perhaps \/ potentially\*\*!/);
+  assert.equal(first.ledger.filter((entry) => entry.ruleId === 'lex-archaic-tis').length, 1);
+  assert.equal(first.ledger.filter((entry) => entry.ruleId === 'lex-archaic-tis-nobler').length, 1);
+  assert.equal(first.ledger.filter((entry) => entry.ruleId === 'lex-archaic-perchance').length, 1);
+  assert.deepEqual(first.ledger, second.ledger);
+});
+
+test('archaic-heavy input remains within the existing growth ceiling', () => {
+  const source = Array(12).fill('The slings and arrows bring a sea of troubles.').join(' ');
+  assert.ok(wordCount(serializePlain(transform(source))) <= Math.floor(wordCount(source) * 2.25));
 });
 
 test('protected payload instances round-trip byte-identically in both serializers', () => {

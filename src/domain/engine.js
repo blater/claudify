@@ -13,6 +13,7 @@ const PROTECTED_PATTERNS = [
   /“[^”]+”/g,
   /"[^"]+"/g,
   /(?<![A-Za-z0-9])'[^']+'(?![A-Za-z0-9])/g,
+  /(?<=\*\*)[^*]+(?=\*\*)/g,
   /\*\*/g,
   /\b\d+(?:[.,:/-]\d+)*\b/g,
   /\b(?:[A-Z][A-Z0-9&.-]{1,}\s+){1,3}[A-Z][A-Z0-9&.-]{1,}\b/g,
@@ -167,9 +168,9 @@ function transformSentence(sentence, paragraphIndex, sentenceIndex, documentSeed
 function applyLexical(value, occurrenceBase, documentSeed, ledger) {
   const triggerEntries = phraseRules.flatMap((rule) => rule.triggers.map((trigger) => ({ rule, trigger })))
     .sort((a, b) => b.trigger.length - a.trigger.length || b.rule.priority - a.rule.priority);
-  const pattern = new RegExp(`\\b(${triggerEntries.map(({ trigger }) => escapeRegExp(trigger)).join('|')})\\b`, 'gi');
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}'’\\-])(?:${triggerEntries.map(({ trigger }) => escapeRegExp(trigger)).join('|')})(?![\\p{L}\\p{N}'’\\-])`, 'giu');
   let occurrence = 0;
-  return value.replace(pattern, (match, _capture, offset) => {
+  return value.replace(pattern, (match, offset) => {
     if (insideMarker(value, offset)) return match;
     const selected = triggerEntries.find(({ trigger }) => trigger.toLowerCase() === match.toLowerCase());
     if (!selected) return match;
