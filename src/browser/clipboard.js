@@ -7,7 +7,7 @@ export async function copyOutput(payload, capabilities = {}) {
 
   if (payload.mode === 'markdown') {
     await clipboard.writeText(payload.markdown);
-    return { kind: 'markdown', message: 'Markdown copied.' };
+    return { kind: 'markdown', message: 'Markdown slopied.' };
   }
 
   if (ClipboardItemCtor && BlobCtor && clipboard.write && payload.html) {
@@ -16,9 +16,9 @@ export async function copyOutput(payload, capabilities = {}) {
       'text/html': new BlobCtor([payload.html], { type: 'text/html' })
     });
     await clipboard.write([item]);
-    return { kind: 'rich', message: 'Rich output copied with a plain-text fallback.' };
+    return { kind: 'rich', message: 'Copied! You got this! 🙌' };
   }
 
   await clipboard.writeText(payload.plain);
-  return { kind: 'plain', message: 'Plain text copied; rich clipboard formatting is unavailable in this browser.' };
+  return { kind: 'plain', message: 'Copied! Change the world! 🌏' };
 }

@@ -4,45 +4,60 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Claudify turns ordinary prose into deterministic, over-engineered AI-writing parody.">
-  <title>Claudify — Worse writing, thoughtfully operationalized</title>
-  <link rel="stylesheet" href="styles.css">
+  <title> Deterministic prose inflation for people who have seen one load bearing pivotal landscape too many.
+  </title>
+  <link rel="stylesheet" href="styles.css?v=source-tabs-20260902">
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="#main">Claudify<span aria-hidden="true">↗</span></a>
-    <p>Deterministic prose inflation for people who have seen one pivotal landscape too many.</p>
+    <p>Paste English prose. Make it Linked-in share-ready.</p>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">Static. Private. Needlessly elaborate.</p>
-      <h1 id="page-title">Make ordinary prose sound <em>genuinely transformative.</em></h1>
-      <p>Paste English prose. Claudify will make it less clear, more qualified, and suspiciously share-ready—without calling an LLM.</p>
+      <p class="eyebrow">Honest. Seamy. Load Bearing.</p>
+      <h1 id="page-title">
+        <span class="title-word title-word-small">Agentify</span>
+        <span class="title-word title-word-small">Intentify</span>
+        <span class="title-word title-word-large"><b>Claudify</b></span>
+      </h1>
+      <p>
     </section>
 
     <div class="workspace">
       <section class="panel input-panel" aria-labelledby="source-title">
         <div class="panel-heading">
           <div><span class="step">01</span><h2 id="source-title">Source</h2></div>
-          <div class="small-actions"><button id="example-button" class="quiet" type="button">Load example</button><button id="clear-button" class="quiet" type="button">Clear</button></div>
+          <div class="small-actions example-controls"><div class="example-menu-wrap"><button id="example-button" class="quiet example-trigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="example-menu">Load example</button><div id="example-menu" class="example-menu" role="menu" hidden><button id="example-option-showcase" class="example-option" type="button" role="menuitemradio" aria-checked="true" data-example-id="showcase"><span>Claudify showcase</span><span aria-hidden="true">✓</span></button><button id="example-option-hamlet" class="example-option" type="button" role="menuitemradio" aria-checked="false" data-example-id="hamlet"><span>Hamlet soliloquy</span><span aria-hidden="true">✓</span></button><button id="example-option-orwell" class="example-option" type="button" role="menuitemradio" aria-checked="false" data-example-id="orwell"><span>Orwell's six rules</span><span aria-hidden="true">✓</span></button></div></div><button id="clear-button" class="quiet" type="button">Clear</button></div>
         </div>
 
-        <label for="source-url">Source URL <span>best effort</span></label>
-        <div class="url-row">
-          <input id="source-url" type="url" inputmode="url" placeholder="https://github.com/owner/repo/issues/123">
-          <button id="load-url-button" class="secondary" type="button">Load</button>
-        </div>
-        <p id="source-status" class="status" role="status" aria-live="polite"></p>
 
-        <label for="source-text">Source text</label>
-        <textarea id="source-text" rows="16" placeholder="Paste sober, defensible prose here…"></textarea>
+        <div class="tabs source-tabs" role="tablist" aria-label="Source format">
+          <button id="source-text-tab" role="tab" aria-selected="true" aria-controls="source-text-panel" data-source-tab="text">Source Text</button>
+          <button id="source-url-tab" role="tab" aria-selected="false" aria-controls="source-url-panel" data-source-tab="url" tabindex="-1">Source URL</button>
+        </div>
+
+        <div id="source-text-panel" class="source-input-panel" role="tabpanel" aria-labelledby="source-text-tab">
+          <textarea id="source-text" rows="10" placeholder="Paste sober, defensible prose here…"></textarea>
+          <output id="source-score" class="source-score" aria-label="Source slop score" aria-live="polite"></output>
+        </div>
+        <div id="source-url-panel" class="source-input-panel" role="tabpanel" aria-labelledby="source-url-tab" hidden>
+          <label for="source-url">Source URL</label>
+          <div class="url-row">
+            <input id="source-url" type="url" inputmode="url" placeholder="https://github.com/owner/repo/issues/123">
+            <button id="load-url-button" class="secondary" type="button">Load</button>
+          </div>
+        </div>
+
         <button id="transform-button" class="primary" type="button" disabled>Claudify it <span aria-hidden="true">→</span></button>
+        <p id="source-status" class="status" role="status" aria-live="polite"></p>
       </section>
+
 
       <section class="panel output-panel" aria-labelledby="result-title">
         <div class="panel-heading">
           <div><span class="step">02</span><h2 id="result-title">Result</h2></div>
-          <button id="copy-button" class="secondary" type="button" disabled>Copy output</button>
         </div>
 
         <div class="tabs" role="tablist" aria-label="Output format">
@@ -51,8 +66,11 @@
         </div>
 
         <article id="rich-output" class="rich-output" role="tabpanel" aria-labelledby="rich-tab" tabindex="0"></article>
-        <textarea id="markdown-output" class="markdown-output" role="tabpanel" aria-labelledby="markdown-tab" tabindex="0" readonly hidden></textarea>
+
+        <textarea id="markdown-output" class="markdown-output" role="tabpanel" aria-labelledby="markdown-tab" tabindex="0" rows="10" readonly hidden></textarea>
         <p id="output-status" class="status" role="status" aria-live="polite"></p>
+        <button id="copy-button" class="secondary" type="button" disabled>Copy Output</button>
+
 
         <aside class="signals" aria-labelledby="signals-title">
           <div><p class="eyebrow">Comedic transformation intensity</p><h3 id="signals-title">Slop score</h3></div>
@@ -63,7 +81,6 @@
     </div>
   </main>
 
-  <footer><p>Parody, not an AI detector. Your pasted text stays in this browser; URL loading contacts the submitted origin or <code>api.github.com</code>.</p></footer>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=source-score-20260902"></script>
 </body>
 </html>

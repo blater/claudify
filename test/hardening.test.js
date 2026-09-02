@@ -5,7 +5,7 @@ import { copyOutput } from '../src/browser/clipboard.js';
 import { renderRich } from '../src/browser/render.js';
 import { fetchSource, githubApiUrl } from '../src/browser/url.js';
 import { createDocument, protectedText, text } from '../src/domain/document.js';
-import { score, serializeMarkdown, serializePlain, tally, transform, validateDocument } from '../src/domain/index.js';
+import { score, serializeMarkdown, serializePlain, sourceScore as calculateSourceScore, tally, transform, validateDocument } from '../src/domain/index.js';
 import { createRequestGate, nextTabIndex } from '../src/presentation/state.js';
 import { collectFamilies, isFlagged, scoreBearingFamilies } from './oracle-helpers.js';
 
@@ -91,7 +91,7 @@ test('documents are deeply frozen and malformed structures fail before serializa
   assert.throws(() => createDocument([{ type: 'list', items: [{}] }], [], 0, spans), /Malformed list item/);
 });
 
-test('score weights, per-category saturation, and global cap are exact', () => {
+test('score weights and occurrence accumulation are exact without a global cap', () => {
   const make = (categories) => createDocument(
     [{ type: 'paragraph', inlines: [text('x')] }],
     categories.map((category, index) => ({ ruleId: `r-${index}`, category, sourceNode: 0, sourceOffset: index })),
@@ -100,9 +100,12 @@ test('score weights, per-category saturation, and global cap are exact', () => {
   );
   assert.equal(score(make(['negativeParallelism'])), 10);
   assert.equal(score(make(Array(5).fill('negativeParallelism'))), 44);
-  assert.equal(score(make(Array(6).fill('negativeParallelism'))), 44, 'sixth entry must be saturated');
+  assert.equal(score(make(Array(6).fill('negativeParallelism'))), 53);
+  assert.equal(score(make(Array(10).fill('negativeParallelism'))), 87);
+  assert.equal(score(make(Array(11).fill('negativeParallelism'))), 95);
+  assert.equal(score(make(Array(20).fill('negativeParallelism'))), 172);
   const denseCategories = ['negativeParallelism', 'list', 'copulaAvoidance', 'indirectAssociation', 'ruleOfThree', 'significance', 'awkwardness', 'heading'];
-  assert.equal(score(make(denseCategories.flatMap((category) => Array(5).fill(category)))), 100);
+  assert.equal(score(make(denseCategories.flatMap((category) => Array(5).fill(category)))), 286);
 
   const source = 'A tool is a system that helps a team complete a task without an error.';
   assert.ok(wordCount(serializePlain(transform(source))) <= Math.floor(wordCount(source) * 2.25));
@@ -192,15 +195,41 @@ test('app wiring transforms and invalidates stale output after source edits', as
   try {
     await import(`../src/app.js?hardening=${Date.now()}`);
     const source = fake.getElementById('source-text');
+    const sourceScore = fake.getElementById('source-score');
     const transformButton = fake.getElementById('transform-button');
+    const sourceTextTab = fake.getElementById('source-text-tab');
+    const sourceUrlTab = fake.getElementById('source-url-tab');
     source.value = 'A review tool is a system that helps the task and shows an error.';
     source.dispatch('input');
+    assert.equal(sourceScore.textContent, '');
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    assert.equal(sourceScore.textContent, `Slop score ${calculateSourceScore(source.value)}`);
+    assert.notEqual(sourceScore.textContent, `Slop score ${score(transform(source.value))}`);
     assert.equal(transformButton.disabled, false);
     transformButton.dispatch('click');
     assert.equal(fake.getElementById('copy-button').disabled, false);
     assert.notEqual(fake.getElementById('slop-score').textContent, '—');
+    sourceUrlTab.dispatch('click');
+    assert.equal(fake.getElementById('source-text-panel').hidden, true);
+    assert.equal(fake.getElementById('source-url-panel').hidden, false);
+    sourceTextTab.dispatch('click');
+    assert.equal(fake.getElementById('source-text-panel').hidden, false);
+    assert.equal(fake.getElementById('source-url-panel').hidden, true);
+    const exampleButton = fake.getElementById('example-button');
+    const exampleMenu = fake.getElementById('example-menu');
+    assert.equal(exampleMenu.hidden, true);
+    exampleButton.dispatch('click');
+    assert.equal(exampleMenu.hidden, false);
+    fake.getElementById('example-option-hamlet').dataset.exampleId = 'hamlet';
+    fake.getElementById('example-option-hamlet').dispatch('click');
+    assert.match(source.value, /To be, or not to be/);
+    exampleButton.dispatch('click');
+    fake.getElementById('example-option-orwell').dataset.exampleId = 'orwell';
+    fake.getElementById('example-option-orwell').dispatch('click');
+    assert.match(source.value, /Orwell's six rules for writing/);
     source.value = 'replacement source';
     source.dispatch('input');
+    assert.equal(sourceScore.textContent, '');
     assert.equal(fake.getElementById('copy-button').disabled, true);
     assert.equal(fake.getElementById('markdown-output').value, '');
     assert.equal(fake.getElementById('slop-score').textContent, '—');
@@ -211,6 +240,17 @@ test('app wiring transforms and invalidates stale output after source edits', as
 
 test('tab panels expose labelled accessibility relationships', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="example-menu"[^>]+role="menu"[^>]+hidden/);
+  assert.match(html, /aria-expanded="false"[^>]+aria-controls="example-menu"/);
+  assert.match(html, /id="example-option-showcase"[^>]+data-example-id="showcase"/);
+  assert.match(html, /id="example-option-hamlet"[^>]+data-example-id="hamlet"/);
+  assert.match(html, /id="example-option-orwell"[^>]+data-example-id="orwell"/);
+  assert.match(html, /<script type="module" src="src\/app\.js\?v=source-score-20260902"><\/script>/);
+  assert.match(html, /id="source-text-tab"[^>]+aria-controls="source-text-panel"/);
+  assert.match(html, /id="source-text-panel"[^>]+role="tabpanel"[^>]+aria-labelledby="source-text-tab"/);
+  assert.match(html, /id="source-url-tab"[^>]+aria-controls="source-url-panel"/);
+  assert.match(html, /id="source-url-panel"[^>]+role="tabpanel"[^>]+aria-labelledby="source-url-tab"[^>]+hidden/);
+  assert.match(html, /id="source-score"[^>]+aria-label="Source slop score"/);
   assert.match(html, /id="rich-tab"[^>]+aria-controls="rich-output"/);
   assert.match(html, /id="rich-output"[^>]+role="tabpanel"[^>]+aria-labelledby="rich-tab"/);
   assert.match(html, /id="markdown-output"[^>]+role="tabpanel"[^>]+aria-labelledby="markdown-tab"/);
@@ -253,14 +293,20 @@ function fakeAppDocument() {
     if (id) elements.set(id, node);
     return node;
   };
-  const ids = ['source-text', 'source-url', 'transform-button', 'example-button', 'clear-button', 'load-url-button', 'source-status', 'output-status', 'rich-output', 'markdown-output', 'slop-score', 'sign-tally', 'copy-button'];
-  ids.forEach((id) => make(id.includes('button') ? 'button' : 'div', id));
+  const ids = ['source-text-tab', 'source-url-tab', 'source-text-panel', 'source-url-panel', 'source-text', 'source-score', 'source-url', 'transform-button', 'example-button', 'example-menu', 'example-option-showcase', 'example-option-hamlet', 'example-option-orwell', 'clear-button', 'load-url-button', 'source-status', 'output-status', 'rich-output', 'markdown-output', 'slop-score', 'sign-tally', 'copy-button'];
+  ids.forEach((id) => {
+    const node = make(id.includes('button') || id.startsWith('example-option') ? 'button' : 'div', id);
+    if (id === 'example-menu') node.hidden = true;
+    if (id.startsWith('example-option-')) node.dataset.exampleId = id.replace('example-option-', '');
+  });
+  const sourceTextTab = make('button', 'source-text-tab'); sourceTextTab.dataset.sourceTab = 'text';
+  const sourceUrlTab = make('button', 'source-url-tab'); sourceUrlTab.dataset.sourceTab = 'url';
   const richTab = make('button', 'rich-tab'); richTab.dataset.tab = 'rich';
   const markdownTab = make('button', 'markdown-tab'); markdownTab.dataset.tab = 'markdown';
   return {
     activeElement: null,
     getElementById: (id) => elements.get(id),
-    querySelectorAll: (selector) => selector === '[role="tab"]' ? [richTab, markdownTab] : [],
+    querySelectorAll: (selector) => selector === '[role="tab"]' ? [sourceTextTab, sourceUrlTab, richTab, markdownTab] : [],
     createDocumentFragment: () => make('fragment'),
     createElement: (tagName) => make(tagName),
     createTextNode: (value) => ({ tagName: null, value, children: [] })

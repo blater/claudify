@@ -1,4 +1,8 @@
+.uv-cache
 .DS_Store
 _bmad_output
 _bmad
 .agents
+_bmad
+_bmad-output
+docs

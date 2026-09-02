@@ -33,8 +33,8 @@ export function tally(document) {
 
 export function score(document) {
   const counts = tally(document).filter((item) => item.count > 0);
-  const weighted = counts.reduce((total, item) => total + (scoreWeights[item.key] ?? 1) * Math.min(item.count, 5), 0);
-  return Math.min(100, Math.round(weighted * 1.7 + counts.length * 1.8));
+  const weighted = counts.reduce((total, item) => total + (scoreWeights[item.key] ?? 1) * item.count, 0);
+  return Math.round(weighted * 1.7 + counts.length * 1.8);
 }
 
 export function serializePlain(document) {

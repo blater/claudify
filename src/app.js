@@ -1,22 +1,25 @@
-import { score, serializeMarkdown, serializePlain, tally, transform } from './domain/index.js';
+import { score, serializeMarkdown, serializePlain, sourceScore, tally, transform } from './domain/index.js?v=source-score-20260902';
 import { renderRich } from './browser/render.js';
 import { copyOutput } from './browser/clipboard.js';
 import { fetchSource, sourceLoadFailure } from './browser/url.js';
 import { createRequestGate, nextTabIndex } from './presentation/state.js';
+import { EXAMPLES } from './examples.js';
 
-const EXAMPLE = `A small engineering team uses a review tool to improve releases. The system is a simple way to show errors before customers see them, and it helps each task stay focused. The team has three goals: catch risky changes early, explain decisions clearly, and keep feedback connected to the code.
-
-The process starts when an engineer opens a change. Reviewers read the proposal and discuss its context. The tool connects comments to exact lines and shows which checks passed. This keeps the conversation practical, but the team still decides what matters.
-
-The team measures results over time. Faster reviews are useful, clear ownership is important, and fewer production problems help everyone. The process does not replace judgment; it gives people a shared place to work and learn.`;
-
-const state = { document: null, activeTab: 'rich' };
+const state = { document: null, activeTab: 'rich', activeSourceTab: 'text' };
 const sourceRequests = createRequestGate();
+const SOURCE_SCORE_DELAY = 300;
+let sourceScoreTimer = null;
+const allTabs = [...document.querySelectorAll('[role="tab"]')];
 const elements = {
   source: byId('source-text'),
   sourceUrl: byId('source-url'),
+  sourceScore: byId('source-score'),
+  sourceTextPanel: byId('source-text-panel'),
+  sourceUrlPanel: byId('source-url-panel'),
   transform: byId('transform-button'),
   example: byId('example-button'),
+  exampleMenu: byId('example-menu'),
+  exampleOptions: [byId('example-option-showcase'), byId('example-option-hamlet'), byId('example-option-orwell')],
   clear: byId('clear-button'),
   loadUrl: byId('load-url-button'),
   sourceStatus: byId('source-status'),
@@ -26,7 +29,8 @@ const elements = {
   score: byId('slop-score'),
   tally: byId('sign-tally'),
   copy: byId('copy-button'),
-  tabs: [...document.querySelectorAll('[role="tab"]')]
+  tabs: allTabs.filter((tab) => tab.dataset.tab),
+  sourceTabs: allTabs.filter((tab) => tab.dataset.sourceTab)
 };
 
 elements.source.addEventListener('input', () => {
@@ -34,16 +38,19 @@ elements.source.addEventListener('input', () => {
   elements.loadUrl.disabled = false;
   invalidateOutput();
   setStatus(elements.sourceStatus, '', '');
+  scheduleSourceScore();
   syncTransformAvailability();
 });
 elements.example.addEventListener('click', () => {
-  sourceRequests.invalidate();
-  elements.source.value = EXAMPLE;
-  elements.loadUrl.disabled = false;
-  invalidateOutput();
-  setStatus(elements.sourceStatus, 'Bundled example loaded. No network request was made.', 'success');
-  syncTransformAvailability();
-  elements.source.focus();
+  const open = elements.exampleMenu.hidden;
+  elements.exampleMenu.hidden = !open;
+  elements.example.setAttribute('aria-expanded', String(open));
+});
+elements.exampleOptions.forEach((option) => option.addEventListener('click', () => loadExample(option.dataset.exampleId)));
+elements.exampleMenu.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  closeExampleMenu();
+  elements.example.focus();
 });
 elements.clear.addEventListener('click', clearAll);
 elements.transform.addEventListener('click', runTransformation);
@@ -60,6 +67,18 @@ elements.tabs.forEach((tab, index) => {
     target.focus();
   });
 });
+elements.sourceTabs.forEach((tab, index) => {
+  tab.addEventListener('click', () => selectSourceTab(tab.dataset.sourceTab));
+  tab.addEventListener('keydown', (event) => {
+    const targetIndex = nextTabIndex(index, event.key, elements.sourceTabs.length);
+    if (targetIndex == null) return;
+    event.preventDefault();
+    const target = elements.sourceTabs[targetIndex];
+    selectSourceTab(target.dataset.sourceTab);
+    target.focus();
+  });
+});
+selectSourceTab(state.activeSourceTab);
 syncTransformAvailability();
 
 function runTransformation() {
@@ -67,10 +86,10 @@ function runTransformation() {
     state.document = transform(elements.source.value);
     renderRich(state.document, elements.rich);
     elements.markdown.value = serializeMarkdown(state.document);
-    elements.score.textContent = `${score(state.document)}/100`;
+    elements.score.textContent = String(score(state.document));
     renderTally(state.document);
     elements.copy.disabled = false;
-    setStatus(elements.outputStatus, 'Claudeification complete. The score measures comedic transformation intensity, not AI authorship.', 'success');
+    setStatus(elements.outputStatus, 'Complete & Linked-In Ready', 'success');
   } catch (error) {
     invalidateOutput(false);
     setStatus(elements.outputStatus, error instanceof Error ? error.message : 'Transformation failed.', 'error');
@@ -99,6 +118,8 @@ async function loadSourceUrl() {
     sourceRequests.finish(request);
     elements.source.value = result.text;
     invalidateOutput();
+    selectSourceTab('text');
+    scheduleSourceScore();
     syncTransformAvailability();
     setStatus(elements.sourceStatus, result.notice, 'success');
     elements.loadUrl.disabled = false;
@@ -158,16 +179,50 @@ function selectTab(tabName) {
   elements.markdown.hidden = tabName !== 'markdown';
 }
 
+function selectSourceTab(tabName) {
+  state.activeSourceTab = tabName;
+  for (const tab of elements.sourceTabs) {
+    const selected = tab.dataset.sourceTab === tabName;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  }
+  elements.sourceTextPanel.hidden = tabName !== 'text';
+  elements.sourceUrlPanel.hidden = tabName !== 'url';
+}
+
 function clearAll() {
   sourceRequests.invalidate();
+  closeExampleMenu();
   elements.source.value = '';
   elements.sourceUrl.value = '';
   elements.loadUrl.disabled = false;
   invalidateOutput();
+  selectSourceTab('text');
   setStatus(elements.sourceStatus, '', '');
+  scheduleSourceScore();
   setStatus(elements.outputStatus, '', '');
   syncTransformAvailability();
   elements.source.focus();
+}
+
+function loadExample(exampleId) {
+  sourceRequests.invalidate();
+  const selected = EXAMPLES.find((example) => example.id === exampleId) ?? EXAMPLES[0];
+  elements.source.value = selected.text;
+  elements.loadUrl.disabled = false;
+  invalidateOutput();
+  elements.exampleOptions.forEach((option) => option.setAttribute('aria-checked', String(option.dataset.exampleId === selected.id)));
+  closeExampleMenu();
+  selectSourceTab('text');
+  setStatus(elements.sourceStatus, `${selected.label} loaded.`, 'success');
+  scheduleSourceScore();
+  syncTransformAvailability();
+  elements.source.focus();
+}
+
+function closeExampleMenu() {
+  elements.exampleMenu.hidden = true;
+  elements.example.setAttribute('aria-expanded', 'false');
 }
 
 function invalidateOutput(clearStatus = true) {
@@ -182,6 +237,25 @@ function invalidateOutput(clearStatus = true) {
 
 function syncTransformAvailability() {
   elements.transform.disabled = !elements.source.value.trim();
+}
+
+function scheduleSourceScore() {
+  if (sourceScoreTimer !== null) {
+    clearTimeout(sourceScoreTimer);
+    sourceScoreTimer = null;
+  }
+  elements.sourceScore.textContent = '';
+  if (!elements.source.value.trim()) {
+    return;
+  }
+  sourceScoreTimer = setTimeout(() => {
+    sourceScoreTimer = null;
+    try {
+      elements.sourceScore.textContent = `Slop score ${sourceScore(elements.source.value)}`;
+    } catch {
+      elements.sourceScore.textContent = '';
+    }
+  }, SOURCE_SCORE_DELAY);
 }
 
 function setStatus(element, message, kind) {

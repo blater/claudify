@@ -27,7 +27,7 @@ test('reported excerpt preserves question force and colon leads while retaining 
   assert.doesNotMatch(output, /:,|—[.?]/);
   assert.doesNotMatch(output, /leveraged to seeing|not only one can/i);
   assert.doesNotMatch(output, /underscores\s+(?:What|Never|put|said|scrupulous)\b/i);
-  assert.match(output, /the writer is used to seeing clichés/i);
+  assert.match(output, /the content creative is used to seeing clichés/i);
 });
 
 test('questions and emphatic questions receive lexical changes without declarative tails', () => {
@@ -77,7 +77,7 @@ test('complete coordinated clauses use grammatical full-clause parallelism', () 
 
 test('uncertain topics use a noun-phrase fallback', () => {
   const output = plain('The method demonstrates a useful pattern for teams reviewing difficult changes while the group records practical outcomes and discusses surrounding constraints in considerable detail.');
-  assert.match(output, /underscores the broader proposition/i);
+  assert.match(output, /underscores a load-bearing pattern/i);
   assert.doesNotMatch(output, /underscores\s+(?:What|Never|put|said|scrupulous)\b/i);
 });
 
