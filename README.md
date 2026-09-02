@@ -2,13 +2,17 @@
 
 ### Paste English prose. Make it Linked-in share-ready.
 
-Writing falling flat?  Too predictable? 
-Too polished - Too **human**?
-[Claudify](https://blater.github.io/claudify/) helps your words speak the language of AI.
+Writing falling flat?  
+* Too predictable? 
+* Too polished
+* Too **human**?
 
-With a deterministic approach and no AI of its own, [Claudify](https://blater.github.io/claudify/) uses advanced linguistic heuristics to transform everyday prose into machine-engineered writing that captures the familiar patterns of Claude and other AI models.
+[Claudify](https://blater.github.io/claudify/) makes your words speak the language of AI.
 
-It introduces the hallmarks readers have come to recognize: lexical clichés, marketing clusters, em dashes, the rule of three, passive constructions, and clusters of transitions. Need an unexpectedly strange word choice or an awkward turn of phase? [Claudify](https://blater.github.io/claudify/) can help
+With absolutely no AI use of its own, [Claudify](https://blater.github.io/claudify/) takes solid, well crafted English prose and combines advanced linguistic heuristics with raw power to bend, fold, crush, and extrude it oozing and sweaty into the familiar machine-engineered patterns and tics that mark the outpourings of Claude and other AI's.
+
+Claudify stamps it with all of the comforting AI hallmarks readers have come to recognize and expect: lexical clichés, marketing clusters, em dashes, the rule of three, passive constructions, and clusters of transitions. 
+Need an unexpectedly strange word choice or an awkward turn of phrase? [Claudify](https://blater.github.io/claudify/) is there to help.
 
 
 ## Usage
