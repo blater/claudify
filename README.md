@@ -14,12 +14,12 @@ It introduces the hallmarks readers have come to recognize: lexical clichés, ma
 ## Usage
 
 Either paste your text into the "Source Text" edit box, or click on Source URL and choose a document on the web to load (may have limitations), and then click "Claudify it"
-![Claudify](assets/operation0.png)
 
 You can also load one of the example texts and try that. In this one we clean up a passage from stuffy old Hamlet and make it relevant for modern audiences.
 ![Claudify](assets/operation1.png)
 
-Writing takes work. But it shouldn’t feel like hard labor. Relax and sit back while Claudify enslopifies for *you*.
+_Writing takes work_. But it shouldn’t feel like hard labor. Relax and sit back while Claudify enslopifies for *you*.
+
 
 ## Run locally
 
